@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>The Ledger</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<meta name="theme-color" content="#3F5943">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%233F5943'/%3E%3Ctext x='50' y='66' font-size='54' text-anchor='middle'%3E%F0%9F%93%92%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EEF3E9; --paper-card:#FFFFFF; --rule:#C6D3BD; --ink:#20291F; --ink-soft:#5B6957;
+    --stamp-red:#B33A3A; --brass:#B8863B; --sage:#5B7360; --sage-deep:#3F5943;
+    --shadow: 0 2px 10px rgba(32,41,31,0.08);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper); font-family:'Inter',sans-serif; color:var(--ink);
+    -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+  }
+  #app{min-height:100vh; padding-bottom:90px; position:relative;}
+  .screen{display:none;}
+  .screen.active{display:block;}
+  .rules{
+    background-image: repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, var(--rule) 28px);
+    background-position: 0 118px;
+  }
+  .statusbar{height:env(safe-area-inset-top,24px); background:var(--paper);}
+  .topbar{padding:10px 20px 14px; background:var(--paper); border-bottom:1px solid var(--rule); display:flex; justify-content:space-between; align-items:flex-start;}
+  .brand{font-family:'Special Elite',monospace; font-size:20px; letter-spacing:0.5px; color:var(--sage-deep);}
+  .brand span{color:var(--stamp-red);}
+  .subhead{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .icon-btn{background:none; border:none; font-size:18px; color:var(--ink-soft); padding:4px;}
+
+  .month-tabs{display:flex; gap:6px; padding:14px 20px 4px;}
+  .month-tab{font-family:'IBM Plex Mono',monospace; font-size:12px; padding:6px 12px; border-radius:8px 8px 0 0; background:#E2E9DB; color:var(--ink-soft); border:1px solid var(--rule); border-bottom:none; position:relative; top:1px;}
+  .month-tab.active{background:var(--paper-card); color:var(--ink); font-weight:600; box-shadow:0 -2px 0 var(--brass) inset;}
+
+  .tape{margin:14px 20px 6px; background:var(--paper-card); border-radius:4px; box-shadow:var(--shadow); padding:18px;}
+  .tape-label{font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--ink-soft); font-weight:600;}
+  .tape-total{font-family:'IBM Plex Mono',monospace; font-size:34px; font-weight:700; color:var(--stamp-red); margin-top:2px;}
+  .tape-meta{display:flex; justify-content:space-between; margin-top:10px; font-size:11px; color:var(--ink-soft);}
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:var(--sage); display:inline-block; margin-right:5px;}
+  .sync-dot.stale{background:var(--stamp-red);}
+
+  .section-label{font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--ink-soft); font-weight:700; margin:18px 20px 8px;}
+  .cat-row{display:flex; align-items:center; padding:9px 20px; gap:10px;}
+  .cat-tag{font-family:'Special Elite',monospace; font-size:10.5px; padding:3px 8px; border:1.5px solid currentColor; border-radius:3px; transform:rotate(-2deg); white-space:nowrap; letter-spacing:0.4px; flex-shrink:0;}
+  .cat-bar-wrap{flex:1; height:6px; background:#E2E9DB; border-radius:3px; overflow:hidden;}
+  .cat-bar{height:100%; border-radius:3px;}
+  .cat-amt{font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600; width:64px; text-align:right; flex-shrink:0;}
+  .empty-note{padding:20px; color:var(--ink-soft); font-size:13px; text-align:center;}
+
+  .payer-split{display:flex; gap:10px; margin:16px 20px 4px;}
+  .payer-card{flex:1; background:var(--paper-card); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow);}
+  .payer-name{font-size:11px; color:var(--ink-soft); font-weight:600;}
+  .payer-amt{font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:700; margin-top:2px;}
+
+  .ledger-row{display:flex; align-items:center; padding:12px 20px; gap:12px;}
+  .ledger-icon{width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; background:#E2EDE4;}
+  .ledger-mid{flex:1; min-width:0;}
+  .ledger-merchant{font-size:13.5px; font-weight:600;}
+  .ledger-meta{font-size:11px; color:var(--ink-soft); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .ledger-amt{font-family:'IBM Plex Mono',monospace; font-size:14px; font-weight:700; color:var(--stamp-red); flex-shrink:0;}
+  .filter-row{display:flex; gap:8px; padding:10px 20px; overflow-x:auto;}
+  .filter-row select{font-size:12px; padding:6px 8px; border-radius:8px; border:1px solid var(--rule); background:var(--paper-card); color:var(--ink);}
+
+  .form-wrap{padding:18px 20px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft); font-weight:700; margin-bottom:6px;}
+  .field input, .field select, .field textarea{width:100%; background:var(--paper-card); border:1px solid var(--rule); border-radius:8px; padding:11px 12px; font-family:'Inter',sans-serif; font-size:14px; color:var(--ink);}
+  .amount-input{font-family:'IBM Plex Mono',monospace; font-size:26px !important; font-weight:700; padding:10px 12px !important;}
+  .suggest-chip{display:inline-flex; align-items:center; gap:6px; background:#FBF1DC; border:1px solid var(--brass); color:#7A5A20; font-size:12px; font-weight:600; padding:6px 10px; border-radius:20px; margin-top:8px; margin-right:6px;}
+  .btn-primary{width:100%; background:var(--sage-deep); color:#F3F6EE; border:none; border-radius:10px; padding:14px; font-size:14.5px; font-weight:700; letter-spacing:0.3px; box-shadow:0 4px 0 #29391D;}
+  .btn-primary:disabled{opacity:0.5;}
+  .btn-secondary{width:100%; background:var(--paper-card); color:var(--ink); border:1.5px solid var(--rule); border-radius:10px; padding:13px; font-size:14px; font-weight:600; margin-top:10px;}
+  .btn-danger{width:100%; background:#FBEDEC; color:var(--stamp-red); border:1.5px solid var(--stamp-red); border-radius:10px; padding:13px; font-size:14px; font-weight:600; margin-top:10px;}
+
+  .cam-frame{margin:18px 20px; aspect-ratio:3/4; background:#20291F; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#8FA089; font-size:13px; position:relative; overflow:hidden; flex-direction:column; gap:14px;}
+  .cam-corner{position:absolute; width:26px; height:26px; border:2.5px solid var(--brass);}
+  .cam-corner.tl{top:14px; left:14px; border-right:none; border-bottom:none;}
+  .cam-corner.tr{top:14px; right:14px; border-left:none; border-bottom:none;}
+  .cam-corner.bl{bottom:14px; left:14px; border-right:none; border-top:none;}
+  .cam-corner.br{bottom:14px; right:14px; border-left:none; border-top:none;}
+  .ocr-card{margin:0 20px 16px; background:var(--paper-card); border-radius:10px; box-shadow:var(--shadow); padding:14px 16px;}
+  .ocr-title{font-size:11px; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;}
+
+  .sync-card{margin:18px 20px; background:var(--paper-card); border-radius:12px; box-shadow:var(--shadow); padding:20px; text-align:center;}
+  .sync-icon{width:56px; height:56px; border-radius:50%; background:#E2E9DB; display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 12px;}
+  .sync-status{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
+  .ocr-line{display:flex; justify-content:space-between; font-size:13px; padding:5px 0; border-bottom:1px dashed var(--rule);}
+  .ocr-line:last-child{border-bottom:none;}
+  .ocr-line b{font-family:'IBM Plex Mono',monospace;}
+  .stale-banner{margin:14px 20px 0; background:#FBEDEC; border:1px solid var(--stamp-red); color:#7A2626; font-size:12.5px; padding:10px 12px; border-radius:8px; display:flex; gap:8px; align-items:flex-start;}
+
+  .tabbar{position:fixed; bottom:0; left:0; right:0; height:78px; background:var(--paper-card); border-top:1px solid var(--rule); display:flex; padding-bottom:env(safe-area-inset-bottom,18px); z-index:50;}
+  .tabbtn{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:none; border:none; font-family:'Inter',sans-serif; font-size:10px; font-weight:600; color:var(--ink-soft); padding-top:10px;}
+  .tabbtn.active{color:var(--sage-deep);}
+  .tabicon{font-size:19px;}
+
+  .lock-screen{min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--sage-deep); color:#EDF2E9; padding:0 30px;}
+  .lock-screen.light{background:var(--paper); color:var(--ink);}
+  .lock-title{font-family:'Special Elite',monospace; font-size:24px; margin-top:14px; text-align:center;}
+  .lock-sub{font-size:12.5px; color:#B9C7B2; margin-top:4px; text-align:center;}
+  .lock-screen.light .lock-sub{color:var(--ink-soft);}
+  .dots{display:flex; gap:14px; margin:34px 0;}
+  .dot{width:14px; height:14px; border-radius:50%; border:1.5px solid #B9C7B2;}
+  .dot.filled{background:#EDF2E9; border-color:#EDF2E9;}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; width:220px;}
+  .key{aspect-ratio:1; border-radius:50%; background:rgba(255,255,255,0.08); color:#EDF2E9; border:1px solid rgba(255,255,255,0.18); font-family:'IBM Plex Mono',monospace; font-size:19px; display:flex; align-items:center; justify-content:center;}
+  .key:active{background:rgba(255,255,255,0.2);}
+  .key.ghost{background:none; border:none;}
+  .pin-error{color:#F3B0B0; font-size:12px; margin-top:8px; height:16px;}
+
+  .toast{position:fixed; top:calc(env(safe-area-inset-top,20px) + 8px); left:20px; right:20px; background:var(--ink); color:#EEF3E9; font-size:13px; padding:12px 16px; border-radius:10px; z-index:200; opacity:0; transform:translateY(-10px); transition:all 0.25s; pointer-events:none; text-align:center;}
+  .toast.show{opacity:1; transform:translateY(0);}
+
+  .top-actions{display:flex; gap:8px; align-items:center;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+<input type="file" id="importFileInput" accept="application/json,.json" multiple style="display:none;">
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================= CONFIG ============================= */
+const CATEGORY_SEED = {
+  "Grocery": ["grocery","woolworths","coles","iga","aldi","supermarket","foodland"],
+  "Vegetables/Fruits": ["vegetable","vegetables","fruit","fruits","veg","banana","apple","tomato","onion","spinach","farm","greengrocer","produce","harris"],
+  "Fish": ["fish","seafood","salmon","prawn","prawns","tuna","fishmonger","oyster"],
+  "Meat": ["meat","butcher","beef","chicken","pork","lamb","mince","sausage"],
+  "Dairy": ["milk","cheese","yogurt","yoghurt","dairy","butter","cream"],
+  "Kids": ["kids","school","childcare","daycare","kinder","kindergarten","tuition"],
+  "Toys": ["toy","toys","lego","kmart","target","bigw","big w","toyworld"],
+  "Eating Out": ["restaurant","cafe","coffee","nandos","mcdonald","kfc","takeaway","ubereats","uber eats","menulog","doordash","bakery","pizza"],
+  "Transport": ["fuel","petrol","uber","taxi","parking","toll","myki","opal","bp","shell","caltex"],
+  "Utilities": ["electricity","gas","water","internet","phone","telstra","optus","vodafone","energy"],
+  "Household": ["bunnings","hardware","cleaning","furniture","ikea","homeware"],
+  "Health": ["pharmacy","chemist","doctor","medical","dentist","priceline","physio"],
+  "Other": []
+};
+const CATEGORY_ORDER = Object.keys(CATEGORY_SEED);
+const CATEGORY_COLORS = {
+  "Grocery":"#5B7360","Vegetables/Fruits":"#3F6E52","Fish":"#4E7C9E","Meat":"#B33A3A",
+  "Dairy":"#8A8478","Kids":"#B8863B","Toys":"#4E7C9E","Eating Out":"#7C6BAE",
+  "Transport":"#6B8E23","Utilities":"#3F6E52","Household":"#B8863B","Health":"#7C6BAE","Other":"#8A8478"
+};
+const CATEGORY_ICONS = {
+  "Grocery":"🛒","Vegetables/Fruits":"🍎","Fish":"🐟","Meat":"🥩","Dairy":"🧀","Kids":"🧒","Toys":"🧸",
+  "Eating Out":"🍜","Transport":"🚗","Utilities":"💡","Household":"🧰","Health":"💊","Other":"📦"
+};
+const PAY_MODES = ["Card","Cash","Personal A/C"];
+const TESSERACT_CDN = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js";
+const CHARTJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js";
+const STALE_MS = 24*3600*1000;
+
+/* ============================= STORAGE ============================= */
+const LS = {
+  entries: "ledger_entries_v1",
+  settings: "ledger_settings_v1",
+  classifier: "ledger_classifier_v1",
+  paymode: "ledger_paymode_v1"
+};
+function lsGet(key, fallback){
+  try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+  catch(e){ return fallback; }
+}
+function lsSet(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+function getEntries(){ return lsGet(LS.entries, []); }
+function saveEntries(arr){ lsSet(LS.entries, arr); }
+function addOrUpdateEntry(entry){
+  const entries = getEntries();
+  const idx = entries.findIndex(e=>e.id===entry.id);
+  if(idx>=0) entries[idx]=entry; else entries.push(entry);
+  saveEntries(entries);
+}
+function deleteEntryById(id){
+  saveEntries(getEntries().filter(e=>e.id!==id));
+}
+
+function defaultSettings(){
+  return { myName:"", otherName:"", pinHash:"", categories: CATEGORY_ORDER.slice(),
+    onboarded:false, lastSyncAt:0, deviceId: uid() };
+}
+function getSettings(){ return lsGet(LS.settings, defaultSettings()); }
+function saveSettings(s){ lsSet(LS.settings, s); }
+
+function defaultClassifier(){ return { totalDocs:0, docsPerCategory:{}, wordCountsPerCategory:{}, totalWordsPerCategory:{}, vocab:{} }; }
+function getClassifier(){ return lsGet(LS.classifier, defaultClassifier()); }
+function saveClassifier(c){ lsSet(LS.classifier, c); }
+
+function defaultPaymode(){ return { merchantCounts:{} }; }
+function getPaymode(){ return lsGet(LS.paymode, defaultPaymode()); }
+function savePaymode(p){ lsSet(LS.paymode, p); }
+
+/* ============================= UTIL ============================= */
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function escapeHtml(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtMoney(n){
+  n = Number(n)||0;
+  return "$" + n.toLocaleString("en-AU", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtDateShort(iso){
+  try{ const d = new Date(iso+"T00:00:00"); return d.toLocaleDateString("en-AU",{day:"numeric", month:"short"}); }
+  catch(e){ return iso; }
+}
+function monthKeyForOffset(offset){
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-offset);
+  return d.toISOString().slice(0,7);
+}
+function monthLabelForOffset(offset){
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-offset);
+  return d.toLocaleDateString("en-AU",{month:"short"});
+}
+function fmtRelative(ts){
+  if(!ts) return "never";
+  const diffMs = Date.now()-ts;
+  const h = Math.floor(diffMs/3600000);
+  if(h<1) return "just now";
+  if(h<24) return h+"h ago";
+  return Math.floor(h/24)+"d ago";
+}
+function isStale(ts){ return !ts || (Date.now()-ts) > STALE_MS; }
+function toast(msg, ms){
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>el.classList.remove("show"), ms||2200);
+}
+function loadScriptOnce(src){
+  return new Promise((resolve,reject)=>{
+    if(document.querySelector('script[data-src="'+src+'"]')){ resolve(); return; }
+    const s = document.createElement("script");
+    s.src = src; s.setAttribute("data-src", src);
+    s.onload = ()=>resolve();
+    s.onerror = ()=>reject(new Error("Failed to load "+src));
+    document.head.appendChild(s);
+  });
+}
+async function sha256Hex(str){
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+/* ============================= CLASSIFIER (self-learning) ============================= */
+function tokenize(text){
+  return String(text||"").toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(w=>w.length>2);
+}
+function classifierTrain(text, category){
+  if(!category) return;
+  const c = getClassifier();
+  const tokens = tokenize(text);
+  c.docsPerCategory[category] = (c.docsPerCategory[category]||0)+1;
+  c.totalDocs = (c.totalDocs||0)+1;
+  c.wordCountsPerCategory[category] = c.wordCountsPerCategory[category] || {};
+  c.totalWordsPerCategory[category] = c.totalWordsPerCategory[category] || 0;
+  tokens.forEach(t=>{
+    c.wordCountsPerCategory[category][t] = (c.wordCountsPerCategory[category][t]||0)+1;
+    c.totalWordsPerCategory[category] += 1;
+    c.vocab[t] = true;
+  });
+  saveClassifier(c);
+}
+function classifierPredict(text){
+  const c = getClassifier();
+  if(!c.totalDocs || c.totalDocs < 8) return null; // not enough signal yet
+  const tokens = tokenize(text);
+  if(!tokens.length) return null;
+  const vocabSize = Object.keys(c.vocab).length || 1;
+  const cats = Object.keys(c.docsPerCategory);
+  if(!cats.length) return null;
+  const logScores = {};
+  cats.forEach(cat=>{
+    let logProb = Math.log((c.docsPerCategory[cat]||0.0001) / c.totalDocs);
+    const totalWords = c.totalWordsPerCategory[cat] || 0;
+    const wc = c.wordCountsPerCategory[cat] || {};
+    tokens.forEach(t=>{
+      const count = wc[t] || 0;
+      logProb += Math.log((count+1) / (totalWords+vocabSize));
+    });
+    logScores[cat] = logProb;
+  });
+  // softmax for a confidence estimate
+  const maxLog = Math.max(...Object.values(logScores));
+  let sumExp = 0;
+  const expScores = {};
+  cats.forEach(cat=>{ const e = Math.exp(logScores[cat]-maxLog); expScores[cat]=e; sumExp+=e; });
+  let best=null, bestP=0;
+  cats.forEach(cat=>{ const p = expScores[cat]/sumExp; if(p>bestP){bestP=p; best=cat;} });
+  return { category: best, confidence: bestP };
+}
+function keywordGuess(text){
+  const lower = String(text||"").toLowerCase();
+  let best=null, bestHits=0;
+  CATEGORY_ORDER.forEach(cat=>{
+    const kws = CATEGORY_SEED[cat]||[];
+    let hits=0;
+    kws.forEach(k=>{ if(lower.includes(k)) hits++; });
+    if(hits>bestHits){ bestHits=hits; best=cat; }
+  });
+  return bestHits>0 ? {category:best, confidence:0.6, source:"keyword"} : null;
+}
+function suggestCategory(text){
+  const ml = classifierPredict(text);
+  if(ml && ml.confidence >= 0.3) return {category:ml.category, confidence:ml.confidence, source:"learned"};
+  const kw = keywordGuess(text);
+  if(kw) return kw;
+  return {category:"Other", confidence:0, source:"default"};
+}
+function mergeClassifiers(a,b){
+  const out = { totalDocs:(a.totalDocs||0)+(b.totalDocs||0), docsPerCategory:{}, wordCountsPerCategory:{}, totalWordsPerCategory:{}, vocab:{} };
+  [a,b].forEach(src=>{
+    Object.keys(src.docsPerCategory||{}).forEach(cat=>{ out.docsPerCategory[cat] = (out.docsPerCategory[cat]||0) + src.docsPerCategory[cat]; });
+    Object.keys(src.totalWordsPerCategory||{}).forEach(cat=>{ out.totalWordsPerCategory[cat] = (out.totalWordsPerCategory[cat]||0) + src.totalWordsPerCategory[cat]; });
+    Object.keys(src.wordCountsPerCategory||{}).forEach(cat=>{
+      out.wordCountsPerCategory[cat] = out.wordCountsPerCategory[cat] || {};
+      Object.keys(src.wordCountsPerCategory[cat]).forEach(w=>{
+        out.wordCountsPerCategory[cat][w] = (out.wordCountsPerCategory[cat][w]||0) + src.wordCountsPerCategory[cat][w];
+      });
+    });
+    Object.keys(src.vocab||{}).forEach(w=>{ out.vocab[w]=true; });
+  });
+  return out;
+}
+
+/* ============================= PAYMENT MODE SUGGESTION ============================= */
+function normalizeMerchantKey(text){
+  return tokenize(text).slice(0,2).join(" ") || "unknown";
+}
+function paymodeTrain(merchantText, mode){
+  if(!mode || !PAY_MODES.includes(mode)) return;
+  const p = getPaymode();
+  const key = normalizeMerchantKey(merchantText);
+  p.merchantCounts[key] = p.merchantCounts[key] || {};
+  p.merchantCounts[key][mode] = (p.merchantCounts[key][mode]||0)+1;
+  savePaymode(p);
+}
+function suggestPaymentModeFromReceipt(ocrText){
+  const t = String(ocrText||"").toLowerCase();
+  if(/\b(visa|mastercard|eftpos|amex|debit|credit card)\b/.test(t)) return {mode:"Card", reason:"printed on receipt"};
+  if(/\bcash\b/.test(t)) return {mode:"Cash", reason:"printed on receipt"};
+  return null;
+}
+function suggestPaymentModeFromMerchant(merchantText){
+  const p = getPaymode();
+  const key = normalizeMerchantKey(merchantText);
+  const counts = p.merchantCounts[key];
+  if(!counts) return null;
+  let best=null, bestN=0;
+  Object.keys(counts).forEach(mode=>{ if(counts[mode]>bestN){ bestN=counts[mode]; best=mode; } });
+  return best ? {mode:best, reason:"usual at this merchant"} : null;
+}
+function suggestPaymentMode(ocrText, merchantText){
+  return suggestPaymentModeFromReceipt(ocrText) || suggestPaymentModeFromMerchant(merchantText) || {mode:"Card", reason:"default"};
+}
+function mergePaymode(a,b){
+  const out = { merchantCounts:{} };
+  [a,b].forEach(src=>{
+    Object.keys(src.merchantCounts||{}).forEach(key=>{
+      out.merchantCounts[key] = out.merchantCounts[key] || {};
+      Object.keys(src.merchantCounts[key]).forEach(mode=>{
+        out.merchantCounts[key][mode] = (out.merchantCounts[key][mode]||0) + src.merchantCounts[key][mode];
+      });
+    });
+  });
+  return out;
+}
+
+/* ============================= RECEIPT PARSING ============================= */
+function parseReceiptText(text){
+  const lines = String(text||"").split("\n").map(l=>l.trim()).filter(Boolean);
+  const merchant = lines[0] || "Receipt";
+  let amount = null;
+  const totalMatch = text.match(/total[^\d]{0,12}(\d+[.,]\d{2})/i);
+  if(totalMatch){ amount = parseFloat(totalMatch[1].replace(",", ".")); }
+  else{
+    const nums = text.match(/\d+[.,]\d{2}/g);
+    if(nums && nums.length){
+      amount = Math.max(...nums.map(n=>parseFloat(n.replace(",", "."))));
+    }
+  }
+  let date = todayISO();
+  const dateMatch = text.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if(dateMatch){
+    let [_, dd, mm, yy] = dateMatch;
+    if(yy.length===2) yy = "20"+yy;
+    const iso = `${yy.padStart(4,"0")}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+    if(!isNaN(new Date(iso).getTime())) date = iso;
+  }
+  const catGuess = suggestCategory(merchant+" "+text);
+  const payGuess = suggestPaymentMode(text, merchant);
+  return { merchant, amount: amount||0, date, category: catGuess.category, paymentMode: payGuess.mode, payReason: payGuess.reason, catConfidence: catGuess.confidence };
+}
+
+/* ============================= APP STATE ============================= */
+let state = {
+  screen: "boot",
+  monthOffset: 0,
+  editingEntryId: null,
+  scanStep: "camera",
+  scanData: null,
+  scanLoading: false,
+  pinBuffer: "",
+  pinFirstEntry: "",
+  pinStage: "entry",
+  pinError: ""
+};
+
+function boot(){
+  const settings = getSettings();
+  if(!settings.onboarded){ state.screen = "onboarding"; }
+  else { state.screen = "lock"; state.pinStage = "entry"; }
+  render();
+}
+
+/* ============================= RENDER ROOT ============================= */
+function render(){
+  const app = document.getElementById("app");
+  let html = "";
+  if(state.screen === "onboarding") html = renderOnboarding();
+  else if(state.screen === "lock") html = renderLock();
+  else {
+    html = '<div class="statusbar"></div>' + renderScreenBody() + renderTabbar();
+  }
+  app.innerHTML = html;
+  wireDynamicInputs();
+}
+
+function renderTabbar(){
+  const tabs = [
+    ["dashboard","📊","Dashboard"], ["add","✏️","Add"], ["scan","📷","Scan"],
+    ["ledger","📒","Ledger"], ["sync","🔄","Sync"]
+  ];
+  return '<div class="tabbar">' + tabs.map(([id,icon,label])=>
+    `<button class="tabbtn ${state.screen===id?'active':''}" onclick="Ledger.go('${id}')"><span class="tabicon">${icon}</span>${label}</button>`
+  ).join("") + '</div>';
+}
+
+function renderScreenBody(){
+  switch(state.screen){
+    case "dashboard": return renderDashboard();
+    case "add": return renderAddOrEdit();
+    case "scan": return renderScan();
+    case "ledger": return renderLedger();
+    case "analytics": return renderAnalytics();
+    case "sync": return renderSync();
+    case "settings": return renderSettings();
+    default: return renderDashboard();
+  }
+}
+
+/* ============================= ONBOARDING ============================= */
+function renderOnboarding(){
+  return `
+  <div class="lock-screen light">
+    <div style="font-size:30px;">📒</div>
+    <div class="lock-title" style="color:var(--sage-deep);">Welcome to The Ledger</div>
+    <div class="lock-sub">Let's set up who's logging spends. You can fix a typo later in Settings, but this is where names really get set.</div>
+    <div class="form-wrap" style="width:100%; max-width:280px; padding-left:0; padding-right:0;">
+      <div class="field"><label>Your name</label><input id="ob-my-name" placeholder="e.g. Alex"></div>
+      <div class="field"><label>Other person's name</label><input id="ob-other-name" placeholder="e.g. Jordan"></div>
+      <div class="pin-error" id="ob-error"></div>
+      <button class="btn-primary" onclick="Ledger.onboardContinue()">Continue → Set PIN</button>
+    </div>
+  </div>`;
+}
+function onboardContinue(){
+  const myName = document.getElementById("ob-my-name").value.trim();
+  const otherName = document.getElementById("ob-other-name").value.trim();
+  const err = document.getElementById("ob-error");
+  if(!myName || !otherName){ err.textContent = "Both names are needed to continue."; return; }
+  const settings = getSettings();
+  settings.myName = myName; settings.otherName = otherName;
+  saveSettings(settings);
+  state.screen = "lock";
+  state.pinStage = "setupFirst";
+  state.pinBuffer = ""; state.pinFirstEntry = ""; state.pinError = "";
+  render();
+}
+
+/* ============================= LOCK / PIN ============================= */
+function renderLock(){
+  const settings = getSettings();
+  const stage = state.pinStage;
+  let title = "Enter PIN", sub = settings.myName ? `${settings.myName}'s Ledger` : "The Ledger";
+  if(stage==="setupFirst"){ title = "Create a 4-digit PIN"; sub = "Keeps your ledger private on this phone"; }
+  if(stage==="setupConfirm"){ title = "Confirm your PIN"; sub = "Enter it once more"; }
+  const filled = state.pinBuffer.length;
+  const dots = [0,1,2,3].map(i=>`<div class="dot ${i<filled?'filled':''}"></div>`).join("");
+  const keys = [1,2,3,4,5,6,7,8,9];
+  const keyHtml = keys.map(k=>`<button class="key" onclick="Ledger.pinPress('${k}')">${k}</button>`).join("")
+    + `<div class="key ghost"></div>`
+    + `<button class="key" onclick="Ledger.pinPress('0')">0</button>`
+    + `<button class="key" onclick="Ledger.pinPress('del')">⌫</button>`;
+  return `
+  <div class="lock-screen">
+    <div style="font-size:34px;">🔒</div>
+    <div class="lock-title">${escapeHtml(title)}</div>
+    <div class="lock-sub">${escapeHtml(sub)}</div>
+    <div class="dots">${dots}</div>
+    <div class="pin-error">${escapeHtml(state.pinError)}</div>
+    <div class="keypad">${keyHtml}</div>
+  </div>`;
+}
+async function pinPress(key){
+  if(key==="del"){ state.pinBuffer = state.pinBuffer.slice(0,-1); render(); return; }
+  if(state.pinBuffer.length>=4) return;
+  state.pinBuffer += key;
+  render();
+  if(state.pinBuffer.length===4){
+    await handlePinComplete();
+  }
+}
+async function handlePinComplete(){
+  const settings = getSettings();
+  if(state.pinStage === "setupFirst"){
+    state.pinFirstEntry = state.pinBuffer;
+    state.pinBuffer = "";
+    state.pinStage = "setupConfirm";
+    render();
+    return;
+  }
+  if(state.pinStage === "setupConfirm"){
+    if(state.pinBuffer !== state.pinFirstEntry){
+      state.pinError = "PINs didn't match — try again.";
+      state.pinBuffer = ""; state.pinFirstEntry = ""; state.pinStage = "setupFirst";
+      setTimeout(render, 50);
+      render();
+      return;
+    }
+    const hash = await sha256Hex(state.pinBuffer);
+    settings.pinHash = hash;
+    settings.onboarded = true;
+    saveSettings(settings);
+    state.pinBuffer = ""; state.pinError = "";
+    state.screen = "dashboard";
+    toast(`Welcome, ${settings.myName}`);
+    render();
+    return;
+  }
+  // entry stage
+  const hash = await sha256Hex(state.pinBuffer);
+  if(hash === settings.pinHash){
+    state.pinBuffer = ""; state.pinError = "";
+    state.screen = "dashboard";
+    checkSyncNudge();
+    render();
+  } else {
+    state.pinError = "Incorrect PIN";
+    state.pinBuffer = "";
+    render();
+  }
+}
+
+/* ============================= DASHBOARD ============================= */
+function renderDashboard(){
+  const settings = getSettings();
+  const entries = getEntries();
+  const mKey = monthKeyForOffset(state.monthOffset);
+  const monthEntries = entries.filter(e=>e.date && e.date.slice(0,7)===mKey);
+  const total = monthEntries.reduce((s,e)=>s+(Number(e.amount)||0),0);
+
+  const byCat = {};
+  monthEntries.forEach(e=>{ byCat[e.category] = (byCat[e.category]||0) + (Number(e.amount)||0); });
+  const catRows = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
+  const maxCat = catRows.length ? byCat[catRows[0]] : 1;
+
+  const byPayer = {};
+  monthEntries.forEach(e=>{ byPayer[e.payer] = (byPayer[e.payer]||0) + (Number(e.amount)||0); });
+
+  const stale = isStale(settings.lastSyncAt);
+  const monthTabs = [2,1,0].map(off=>{
+    const active = off===state.monthOffset;
+    return `<div class="month-tab ${active?'active':''}" onclick="Ledger.setMonthOffset(${off})">${monthLabelForOffset(off)}</div>`;
+  }).join("");
+
+  return `
+  <div class="topbar">
+    <div>
+      <div class="brand">The <span>Ledger</span></div>
+      <div class="subhead">Household spend, at a glance</div>
+    </div>
+    <button class="icon-btn" onclick="Ledger.go('settings')">⚙️</button>
+  </div>
+  <div class="month-tabs">${monthTabs}</div>
+  <div class="tape">
+    <div class="tape-label">Total spent — ${monthLabelForOffset(state.monthOffset)}</div>
+    <div class="tape-total">${fmtMoney(total)}</div>
+    <div class="tape-meta">
+      <span><span class="sync-dot ${stale?'stale':''}"></span>Synced ${fmtRelative(settings.lastSyncAt)}</span>
+      <span>${monthEntries.length} entries</span>
+    </div>
+  </div>
+  <div class="payer-split">
+    <div class="payer-card"><div class="payer-name">${escapeHtml((settings.myName||"YOU").toUpperCase())}</div><div class="payer-amt">${fmtMoney(byPayer[settings.myName]||0)}</div></div>
+    <div class="payer-card"><div class="payer-name">${escapeHtml((settings.otherName||"THEM").toUpperCase())}</div><div class="payer-amt">${fmtMoney(byPayer[settings.otherName]||0)}</div></div>
+  </div>
+  <div class="section-label">By category</div>
+  ${catRows.length ? catRows.map(cat=>{
+    const color = CATEGORY_COLORS[cat] || "#8A8478";
+    const pct = Math.max(6, Math.round((byCat[cat]/maxCat)*100));
+    return `<div class="cat-row">
+      <div class="cat-tag" style="color:${color};">${escapeHtml(cat.toUpperCase())}</div>
+      <div class="cat-bar-wrap"><div class="cat-bar" style="width:${pct}%; background:${color};"></div></div>
+      <div class="cat-amt">${fmtMoney(byCat[cat])}</div>
+    </div>`;
+  }).join("") : '<div class="empty-note">Nothing logged for this month yet.</div>'}
+  <div style="height:10px;"></div>
+  <div class="form-wrap" style="padding-top:0;">
+    <button class="btn-secondary" onclick="Ledger.go('analytics')">View longer-range trends →</button>
+  </div>
+  `;
+}
+function setMonthOffset(off){ state.monthOffset = off; render(); }
+
+/* ============================= ADD / EDIT ============================= */
+function emptyFormEntry(){
+  const settings = getSettings();
+  return { amount:"", note:"", merchant:"", category:"", payer: settings.myName, paymentMode:"Card", date: todayISO(), source:"manual" };
+}
+let formDraft = emptyFormEntry();
+
+function renderAddOrEdit(){
+  const settings = getSettings();
+  const isEdit = !!state.editingEntryId;
+  if(isEdit && (!formDraft || formDraft.id !== state.editingEntryId)){
+    const e = getEntries().find(x=>x.id===state.editingEntryId);
+    formDraft = e ? Object.assign({}, e) : emptyFormEntry();
+  }
+  if(!isEdit && formDraft._fresh !== state.screen+"-fresh"){
+    // ensure a clean draft when arriving fresh at Add (not mid-typing)
+  }
+  const catOptions = settings.categories.map(c=>`<option value="${escapeHtml(c)}" ${formDraft.category===c?'selected':''}>${escapeHtml(c)}</option>`).join("");
+  const payOptions = [settings.myName, settings.otherName].map(p=>`<option value="${escapeHtml(p)}" ${formDraft.payer===p?'selected':''}>${escapeHtml(p)}</option>`).join("");
+  const modeOptions = PAY_MODES.map(m=>`<option value="${m}" ${formDraft.paymentMode===m?'selected':''}>${m}</option>`).join("");
+
+  return `
+  <div class="topbar">
+    <div>
+      <div class="brand">${isEdit?'Edit Spend':'Add Spend'}</div>
+      <div class="subhead">${isEdit?'Update the details below':'Log it before you forget'}</div>
+    </div>
+  </div>
+  <div class="form-wrap">
+    <div class="field">
+      <label>Amount (AUD)</label>
+      <input class="amount-input" id="f-amount" inputmode="decimal" placeholder="$ 0.00" value="${formDraft.amount!==""?formDraft.amount:''}">
+    </div>
+    <div class="field">
+      <label>Note / merchant</label>
+      <input id="f-note" placeholder="e.g. Woolworths — bananas, spinach" value="${escapeHtml(formDraft.note)}">
+      <div id="f-suggest"></div>
+    </div>
+    <div class="field">
+      <label>Category</label>
+      <select id="f-category">${catOptions}</select>
+    </div>
+    <div class="field">
+      <label>Paid by</label>
+      <select id="f-payer">${payOptions}</select>
+    </div>
+    <div class="field">
+      <label>Payment mode</label>
+      <select id="f-paymode">${modeOptions}</select>
+    </div>
+    <div class="field">
+      <label>Date</label>
+      <input id="f-date" type="date" value="${formDraft.date}">
+    </div>
+    <button class="btn-primary" onclick="Ledger.saveForm()">Save spend</button>
+    ${isEdit ? '<button class="btn-danger" onclick="Ledger.deleteFromForm()">Delete entry</button>' : ''}
+  </div>`;
+}
+function onNoteInput(){
+  const noteEl = document.getElementById("f-note");
+  if(!noteEl) return;
+  const text = noteEl.value;
+  formDraft.note = text;
+  const suggestEl = document.getElementById("f-suggest");
+  if(text.trim().length<3){ suggestEl.innerHTML=""; return; }
+  const guess = suggestCategory(text);
+  if(guess.category && guess.confidence>0){
+    suggestEl.innerHTML = `<div class="suggest-chip">${CATEGORY_ICONS[guess.category]||'🏷️'} Suggested: ${escapeHtml(guess.category)}</div>`;
+    suggestEl.querySelector(".suggest-chip").onclick = ()=>{
+      document.getElementById("f-category").value = guess.category;
+      formDraft.category = guess.category;
+    };
+  } else {
+    suggestEl.innerHTML = "";
+  }
+}
+function saveForm(){
+  const amount = parseFloat(document.getElementById("f-amount").value);
+  const note = document.getElementById("f-note").value.trim();
+  const category = document.getElementById("f-category").value;
+  const payer = document.getElementById("f-payer").value;
+  const paymentMode = document.getElementById("f-paymode").value;
+  const date = document.getElementById("f-date").value || todayISO();
+  if(!amount || amount<=0){ toast("Enter an amount first"); return; }
+  const settings = getSettings();
+  const now = Date.now();
+  const isEdit = !!state.editingEntryId;
+  let entry;
+  if(isEdit){
+    entry = getEntries().find(e=>e.id===state.editingEntryId) || {};
+    entry = Object.assign({}, entry, {amount, note, merchant:note, category, payer, paymentMode, date, updatedAt:now});
+  } else {
+    entry = {
+      id: `${settings.myName||"me"}-${now}-${uid().slice(0,4)}`,
+      amount, currency:"AUD", note, merchant:note, category, payer, paymentMode, date,
+      source: formDraft.source||"manual", createdAt:now, updatedAt:now
+    };
+  }
+  addOrUpdateEntry(entry);
+  classifierTrain(note, category);
+  paymodeTrain(note, paymentMode);
+  toast("Saved");
+  state.editingEntryId = null;
+  formDraft = emptyFormEntry();
+  state.screen = "dashboard";
+  render();
+}
+function deleteFromForm(){
+  if(!state.editingEntryId) return;
+  if(!confirm("Delete this entry?")) return;
+  deleteEntryById(state.editingEntryId);
+  toast("Deleted");
+  state.editingEntryId = null;
+  formDraft = emptyFormEntry();
+  state.screen = "ledger";
+  render();
+}
+function startAdd(){
+  state.editingEntryId = null;
+  formDraft = emptyFormEntry();
+  state.screen = "add";
+  render();
+}
+function startEdit(id){
+  state.editingEntryId = id;
+  state.screen = "add";
+  render();
+}
+
+/* ============================= SCAN ============================= */
+function renderScan(){
+  if(state.scanStep === "camera"){
+    return `
+    <div class="topbar">
+      <div><div class="brand">Scan Receipt</div><div class="subhead">Reading on-device — nothing leaves your phone</div></div>
+    </div>
+    <div class="cam-frame" onclick="document.getElementById('cameraInput').click()">
+      <div class="cam-corner tl"></div><div class="cam-corner tr"></div><div class="cam-corner bl"></div><div class="cam-corner br"></div>
+      ${state.scanLoading ? '<div>Reading receipt…</div>' : '<div>📷</div><div>Tap to take a photo</div>'}
+    </div>`;
+  }
+  const d = state.scanData || {};
+  const settings = getSettings();
+  const catOptions = settings.categories.map(c=>`<option value="${escapeHtml(c)}" ${d.category===c?'selected':''}>${escapeHtml(c)}</option>`).join("");
+  const payOptions = [settings.myName, settings.otherName].map(p=>`<option value="${escapeHtml(p)}" ${d.payer===p?'selected':''}>${escapeHtml(p)}</option>`).join("");
+  const modeOptions = PAY_MODES.map(m=>`<option value="${m}" ${d.paymentMode===m?'selected':''}>${m}</option>`).join("");
+  return `
+  <div class="topbar">
+    <div><div class="brand">Confirm Details</div><div class="subhead">Review what we read — edit anything that's off</div></div>
+  </div>
+  <div class="ocr-card">
+    <div class="ocr-title">Detected</div>
+    <div class="suggest-chip">${CATEGORY_ICONS[d.category]||'🏷️'} Suggested: ${escapeHtml(d.category)}</div>
+    <div class="suggest-chip">💳 Suggested: ${escapeHtml(d.paymentMode)} (${escapeHtml(d.payReason||'')})</div>
+  </div>
+  <div class="form-wrap" style="padding-top:0;">
+    <div class="field"><label>Merchant / note</label><input id="f-note" value="${escapeHtml(d.merchant)}"></div>
+    <div class="field"><label>Amount (AUD)</label><input class="amount-input" id="f-amount" inputmode="decimal" value="${d.amount||''}"></div>
+    <div class="field"><label>Category</label><select id="f-category">${catOptions}</select></div>
+    <div class="field"><label>Paid by</label><select id="f-payer">${payOptions}</select></div>
+    <div class="field"><label>Payment mode</label><select id="f-paymode">${modeOptions}</select></div>
+    <div class="field"><label>Date</label><input id="f-date" type="date" value="${d.date}"></div>
+    <button class="btn-primary" onclick="Ledger.confirmScan()">Confirm & save</button>
+    <button class="btn-secondary" onclick="Ledger.retakePhoto()">Retake photo</button>
+  </div>`;
+}
+async function handleCameraFile(file){
+  if(!file) return;
+  state.scanLoading = true; render();
+  try{
+    await loadScriptOnce(TESSERACT_CDN);
+    const result = await Tesseract.recognize(file, "eng");
+    const text = (result && result.data && result.data.text) || "";
+    const parsed = parseReceiptText(text);
+    const settings = getSettings();
+    state.scanData = {
+      merchant: parsed.merchant, amount: parsed.amount, date: parsed.date,
+      category: parsed.category, paymentMode: parsed.paymentMode, payReason: parsed.payReason,
+      payer: settings.myName, rawText: text
+    };
+    state.scanStep = "review";
+  } catch(err){
+    console.error(err);
+    toast("Couldn't read that receipt — try again or add manually");
+  } finally {
+    state.scanLoading = false;
+    render();
+  }
+}
+function confirmScan(){
+  const d = state.scanData || {};
+  const amount = parseFloat(document.getElementById("f-amount").value);
+  const note = document.getElementById("f-note").value.trim();
+  const category = document.getElementById("f-category").value;
+  const payer = document.getElementById("f-payer").value;
+  const paymentMode = document.getElementById("f-paymode").value;
+  const date = document.getElementById("f-date").value || todayISO();
+  if(!amount || amount<=0){ toast("Enter an amount first"); return; }
+  const settings = getSettings();
+  const now = Date.now();
+  const entry = {
+    id: `${settings.myName||"me"}-${now}-${uid().slice(0,4)}`,
+    amount, currency:"AUD", note, merchant:note, category, payer, paymentMode, date,
+    source:"scan", createdAt:now, updatedAt:now
+  };
+  addOrUpdateEntry(entry);
+  classifierTrain(note, category);
+  paymodeTrain(note, paymentMode);
+  toast("Saved from receipt");
+  state.scanStep = "camera"; state.scanData = null;
+  state.screen = "dashboard";
+  render();
+}
+function retakePhoto(){ state.scanStep = "camera"; state.scanData = null; render(); }
+
+/* ============================= LEDGER ============================= */
+let ledgerFilters = { category:"all", payer:"all" };
+function renderLedger(){
+  const settings = getSettings();
+  const mKey = monthKeyForOffset(state.monthOffset);
+  let entries = getEntries().filter(e=>e.date && e.date.slice(0,7)===mKey);
+  if(ledgerFilters.category!=="all") entries = entries.filter(e=>e.category===ledgerFilters.category);
+  if(ledgerFilters.payer!=="all") entries = entries.filter(e=>e.payer===ledgerFilters.payer);
+  entries.sort((a,b)=> (b.date||"").localeCompare(a.date||"") || (b.createdAt||0)-(a.createdAt||0));
+
+  const catOpts = ['<option value="all">All categories</option>'].concat(
+    settings.categories.map(c=>`<option value="${escapeHtml(c)}" ${ledgerFilters.category===c?'selected':''}>${escapeHtml(c)}</option>`)
+  ).join("");
+  const payOpts = ['<option value="all">Everyone</option>'].concat(
+    [settings.myName, settings.otherName].map(p=>`<option value="${escapeHtml(p)}" ${ledgerFilters.payer===p?'selected':''}>${escapeHtml(p)}</option>`)
+  ).join("");
+
+  return `
+  <div class="topbar">
+    <div><div class="brand">Ledger</div><div class="subhead">${monthLabelForOffset(state.monthOffset)} · ${entries.length} entries</div></div>
+  </div>
+  <div class="filter-row">
+    <select id="lf-category" onchange="Ledger.setLedgerFilter('category', this.value)">${catOpts}</select>
+    <select id="lf-payer" onchange="Ledger.setLedgerFilter('payer', this.value)">${payOpts}</select>
+  </div>
+  ${entries.length ? entries.map(e=>`
+    <div class="ledger-row" onclick="Ledger.startEdit('${e.id}')">
+      <div class="ledger-icon">${CATEGORY_ICONS[e.category]||'📦'}</div>
+      <div class="ledger-mid">
+        <div class="ledger-merchant">${escapeHtml(e.note||e.merchant||'Spend')}</div>
+        <div class="ledger-meta">${escapeHtml(e.category)} · ${escapeHtml(e.payer)} · ${escapeHtml(e.paymentMode||'')} · ${fmtDateShort(e.date)}</div>
+      </div>
+      <div class="ledger-amt">${fmtMoney(e.amount)}</div>
+    </div>`).join("") : '<div class="empty-note">No entries match these filters.</div>'}
+  `;
+}
+function setLedgerFilter(key, val){ ledgerFilters[key]=val; render(); }
+
+/* ============================= ANALYTICS ============================= */
+function renderAnalytics(){
+  const entries = getEntries();
+  const months = [];
+  for(let i=5;i>=0;i--){ months.push(monthKeyForOffset(i)); }
+  const totalsByMonth = months.map(mk=> entries.filter(e=>e.date&&e.date.slice(0,7)===mk).reduce((s,e)=>s+(Number(e.amount)||0),0));
+
+  const byMerchant = {};
+  entries.forEach(e=>{ const key=(e.note||e.merchant||"Other").trim()||"Other"; byMerchant[key]=(byMerchant[key]||0)+(Number(e.amount)||0); });
+  const topMerchants = Object.keys(byMerchant).sort((a,b)=>byMerchant[b]-byMerchant[a]).slice(0,6);
+
+  return `
+  <div class="topbar"><div><div class="brand">Analytics</div><div class="subhead">Trends over the last 6 months</div></div></div>
+  <div class="form-wrap" style="padding-bottom:0;"><canvas id="monthChart" height="180"></canvas></div>
+  <div class="section-label">Top merchants (all time)</div>
+  ${topMerchants.length ? topMerchants.map(m=>`
+    <div class="cat-row"><div class="cat-tag" style="color:var(--sage-deep);">${escapeHtml(m.slice(0,18))}</div>
+    <div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.max(6, Math.round(byMerchant[m]/byMerchant[topMerchants[0]]*100))}%; background:var(--brass);"></div></div>
+    <div class="cat-amt">${fmtMoney(byMerchant[m])}</div></div>`).join("") : '<div class="empty-note">No spend history yet.</div>'}
+  <div style="height:20px;"></div>
+  <div id="chartData" data-months='${JSON.stringify(months.map(mk=>mk.slice(5)))}' data-totals='${JSON.stringify(totalsByMonth)}' style="display:none;"></div>
+  `;
+}
+async function drawAnalyticsChart(){
+  const holder = document.getElementById("chartData");
+  const canvas = document.getElementById("monthChart");
+  if(!holder || !canvas) return;
+  try{
+    await loadScriptOnce(CHARTJS_CDN);
+    const months = JSON.parse(holder.dataset.months);
+    const totals = JSON.parse(holder.dataset.totals);
+    if(canvas._chart) canvas._chart.destroy();
+    canvas._chart = new Chart(canvas.getContext("2d"), {
+      type: "bar",
+      data: { labels: months, datasets: [{ label:"Spend", data: totals, backgroundColor:"#5B7360", borderRadius:4 }] },
+      options: { plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+    });
+  } catch(e){ console.error(e); }
+}
+
+/* ============================= SYNC ============================= */
+function renderSync(){
+  const settings = getSettings();
+  const entries = getEntries();
+  const unsynced = entries.filter(e=>(e.updatedAt||0) > (settings.lastSyncAt||0)).length;
+  const stale = isStale(settings.lastSyncAt);
+  let banner = "";
+  if(unsynced>0){
+    banner = `<div class="stale-banner">📤 <span>You have ${unsynced} entr${unsynced===1?'y':'ies'} ${settings.otherName||'they'} haven't seen yet.</span></div>`;
+  } else if(stale){
+    banner = `<div class="stale-banner">⚠️ <span>It's been over 24 hours since your last sync.</span></div>`;
+  }
+  return `
+  <div class="topbar"><div><div class="brand">Sync</div><div class="subhead">Via your shared Proton Drive folder</div></div></div>
+  ${banner}
+  <div class="sync-card">
+    <div class="sync-icon">🔄</div>
+    <div style="font-weight:700; font-size:15px;">Sync now</div>
+    <div class="sync-status">Exports your entries, then lets you pick ${escapeHtml(settings.otherName||"their")}'s latest file from the shared Proton Drive folder</div>
+    <button class="btn-primary" style="margin-top:16px;" onclick="Ledger.syncNow()">Sync now</button>
+  </div>
+  <div class="sync-card">
+    <div style="text-align:left;">
+      <div class="ocr-title" style="margin-bottom:10px;">Sync history</div>
+      <div class="ocr-line"><span>Last successful sync</span><b>${settings.lastSyncAt ? new Date(settings.lastSyncAt).toLocaleString("en-AU",{dateStyle:"medium",timeStyle:"short"}) : "Never"}</b></div>
+      <div class="ocr-line"><span>Entries on this device</span><b>${entries.length}</b></div>
+      <div class="ocr-line"><span>Unsynced changes</span><b style="color:${unsynced>0?'var(--stamp-red)':'inherit'};">${unsynced}</b></div>
+    </div>
+  </div>`;
+}
+async function exportData(){
+  const settings = getSettings();
+  const payload = {
+    deviceOwner: settings.myName, exportedAt: Date.now(),
+    entries: getEntries(), classifier: getClassifier(), paymode: getPaymode()
+  };
+  const filename = `spends-${(settings.myName||"me").replace(/\s+/g,"_")}-${todayISO()}.json`;
+  const blob = new Blob([JSON.stringify(payload)], {type:"application/json"});
+  try{
+    const file = new File([blob], filename, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:"Ledger export"});
+      return true;
+    }
+  } catch(e){ /* user cancelled share — fall through to download */ }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  return true;
+}
+async function syncNow(){
+  await exportData();
+  toast(`Now pick ${getSettings().otherName||"their"}'s file from Proton Drive`, 3000);
+  setTimeout(()=>document.getElementById("importFileInput").click(), 600);
+}
+async function handleImportFiles(fileList){
+  if(!fileList || !fileList.length) return;
+  let addedCount=0, updatedCount=0;
+  let entries = getEntries();
+  const map = {}; entries.forEach(e=>map[e.id]=e);
+  let classifier = getClassifier();
+  let paymode = getPaymode();
+  for(const file of Array.from(fileList)){
+    try{
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(Array.isArray(data.entries)){
+        data.entries.forEach(incoming=>{
+          const existing = map[incoming.id];
+          if(!existing){ map[incoming.id]=incoming; addedCount++; }
+          else if((incoming.updatedAt||0) > (existing.updatedAt||0)){ map[incoming.id]=incoming; updatedCount++; }
+        });
+      }
+      if(data.classifier) classifier = mergeClassifiers(classifier, data.classifier);
+      if(data.paymode) paymode = mergePaymode(paymode, data.paymode);
+    } catch(err){
+      console.error("Import failed for", file.name, err);
+      toast("Couldn't read "+file.name);
+    }
+  }
+  saveEntries(Object.values(map));
+  saveClassifier(classifier);
+  savePaymode(paymode);
+  const settings = getSettings();
+  settings.lastSyncAt = Date.now();
+  saveSettings(settings);
+  toast(`Synced — ${addedCount} new, ${updatedCount} updated`);
+  render();
+}
+function checkSyncNudge(){
+  const settings = getSettings();
+  const entries = getEntries();
+  const unsynced = entries.filter(e=>(e.updatedAt||0) > (settings.lastSyncAt||0)).length;
+  if(unsynced>0){ toast(`${unsynced} unsynced entr${unsynced===1?'y':'ies'} — visit Sync when ready`, 3000); }
+}
+
+/* ============================= SETTINGS ============================= */
+function renderSettings(){
+  const settings = getSettings();
+  return `
+  <div class="topbar" style="align-items:center; gap:10px;">
+    <button class="icon-btn" onclick="Ledger.go('dashboard')">←</button>
+    <div><div class="brand" style="font-size:17px;">Settings</div></div>
+  </div>
+  <div class="form-wrap">
+    <div class="field"><label>Your name</label><input id="s-my-name" value="${escapeHtml(settings.myName)}"></div>
+    <div class="field"><label>Other person's name</label><input id="s-other-name" value="${escapeHtml(settings.otherName)}"></div>
+    <div class="suggest-chip" style="background:#EDF2E9; border-color:var(--sage); color:var(--sage-deep);">ℹ️ This is a fallback for fixing a typo — names are set once at onboarding. Renaming only relabels new entries.</div>
+    <div style="height:14px;"></div>
+    <div class="field"><label>Categories (comma-separated)</label><textarea id="s-categories" rows="3">${escapeHtml(settings.categories.join(", "))}</textarea></div>
+    <button class="btn-primary" onclick="Ledger.saveSettingsForm()">Save changes</button>
+    <button class="btn-secondary" onclick="Ledger.startPinChange()">Change PIN</button>
+  </div>`;
+}
+function saveSettingsForm(){
+  const settings = getSettings();
+  settings.myName = document.getElementById("s-my-name").value.trim() || settings.myName;
+  settings.otherName = document.getElementById("s-other-name").value.trim() || settings.otherName;
+  const catsRaw = document.getElementById("s-categories").value;
+  const cats = catsRaw.split(",").map(c=>c.trim()).filter(Boolean);
+  if(cats.length) settings.categories = cats;
+  saveSettings(settings);
+  toast("Settings saved");
+  state.screen = "dashboard";
+  render();
+}
+function startPinChange(){
+  state.screen = "lock";
+  state.pinStage = "setupFirst";
+  state.pinBuffer = ""; state.pinFirstEntry = ""; state.pinError = "";
+  render();
+}
+
+/* ============================= NAV ============================= */
+function go(screen){
+  state.screen = screen;
+  if(screen==="add"){ state.editingEntryId = null; formDraft = emptyFormEntry(); }
+  render();
+}
+
+/* ============================= WIRE DYNAMIC INPUTS ============================= */
+function wireDynamicInputs(){
+  const noteEl = document.getElementById("f-note");
+  if(noteEl && state.screen==="add"){ noteEl.addEventListener("input", onNoteInput); }
+  if(state.screen==="analytics"){ drawAnalyticsChart(); }
+}
+
+/* ============================= GLOBAL FILE INPUT WIRING ============================= */
+document.getElementById("cameraInput").addEventListener("change", function(e){
+  const file = e.target.files && e.target.files[0];
+  handleCameraFile(file);
+  e.target.value = "";
+});
+document.getElementById("importFileInput").addEventListener("change", function(e){
+  handleImportFiles(e.target.files);
+  e.target.value = "";
+});
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "visible" && state.screen && state.screen!=="boot"){
+    checkSyncNudge();
+  }
+});
+
+/* ============================= PUBLIC API ============================= */
+window.Ledger = {
+  go, setMonthOffset, startAdd, startEdit, saveForm, deleteFromForm,
+  confirmScan, retakePhoto, setLedgerFilter, syncNow,
+  onboardContinue, pinPress, saveSettingsForm, startPinChange
+};
+
+boot();
+})();
+</script>
+</body>
+</html>
