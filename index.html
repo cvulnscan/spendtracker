@@ -946,11 +946,17 @@ function renderSync(){
   <div class="topbar"><div><div class="brand">Sync</div><div class="subhead">Via your shared drive — Google Drive, OneDrive, Proton Drive, iCloud, all work</div></div></div>
   ${banner}
   <div class="sync-card">
-    <div class="sync-icon">🔄</div>
-    <div style="font-weight:700; font-size:15px;">Sync now</div>
-    <div class="sync-status">Exports your entries, then lets you pick ${escapeHtml(settings.otherName||"their")}'s latest file from your shared drive folder</div>
+    <div class="sync-icon">📤</div>
+    <div style="font-weight:700; font-size:15px;">Step 1 — Export</div>
+    <div class="sync-status">Saves your entries as a file into your shared drive folder</div>
+    <button class="btn-primary" style="margin-top:16px;" onclick="Ledger.exportNow()">Export my spends</button>
+  </div>
+  <div class="sync-card">
+    <div class="sync-icon">📥</div>
+    <div style="font-weight:700; font-size:15px;">Step 2 — Import</div>
+    <div class="sync-status">Pick ${escapeHtml(settings.otherName||"their")}'s latest exported file to merge it in</div>
     <div class="sync-status" style="margin-top:8px; font-style:italic;">Tip: use a folder named the same thing (e.g. "Spend Tracker") in whichever app you use — Google Drive, OneDrive, Proton Drive, or iCloud — so it's always easy to find.</div>
-    <button class="btn-primary" style="margin-top:16px;" onclick="Ledger.syncNow()">Sync now</button>
+    <button class="btn-primary" style="margin-top:16px;" onclick="Ledger.importNow()">Import their file</button>
   </div>
   <div class="sync-card">
     <div style="text-align:left;">
@@ -983,10 +989,12 @@ async function exportData(){
   setTimeout(()=>URL.revokeObjectURL(url), 5000);
   return true;
 }
-async function syncNow(){
+async function exportNow(){
   await exportData();
-  toast(`Now pick ${getSettings().otherName||"their"}'s file from your Spend Tracker folder`, 3000);
-  setTimeout(()=>document.getElementById("importFileInput").click(), 600);
+  toast("Saved — now tap Import once you have their file");
+}
+function importNow(){
+  document.getElementById("importFileInput").click();
 }
 async function handleImportFiles(fileList){
   if(!fileList || !fileList.length) return;
@@ -1099,7 +1107,7 @@ document.addEventListener("visibilitychange", function(){
 /* ============================= PUBLIC API ============================= */
 window.Ledger = {
   go, setMonthOffset, startAdd, startEdit, saveForm, deleteFromForm,
-  confirmScan, retakePhoto, setLedgerFilter, syncNow,
+  confirmScan, retakePhoto, setLedgerFilter, exportNow, importNow,
   onboardContinue, pinPress, saveSettingsForm, startPinChange
 };
 
