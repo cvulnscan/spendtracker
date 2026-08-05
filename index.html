@@ -209,7 +209,15 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 function escapeHtml(s){
   return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
+function pad2(n){ return String(n).padStart(2,"0"); }
+function todayISO(){ const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function parseAmountInput(raw){
+  const cleaned = String(raw||"").replace(/[^0-9.]/g, "");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? NaN : n;
+}
+function isValidISODate(s){ return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s+"T00:00:00").getTime()); }
+function safeDate(raw){ return isValidISODate(raw) ? raw : todayISO(); }
 function fmtMoney(n){
   n = Number(n)||0;
   return "$" + n.toLocaleString("en-AU", {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -220,7 +228,7 @@ function fmtDateShort(iso){
 }
 function monthKeyForOffset(offset){
   const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-offset);
-  return d.toISOString().slice(0,7);
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
 }
 function monthLabelForOffset(offset){
   const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-offset);
@@ -706,12 +714,12 @@ function onNoteInput(){
   }
 }
 function saveForm(){
-  const amount = parseFloat(document.getElementById("f-amount").value);
+  const amount = parseAmountInput(document.getElementById("f-amount").value);
   const note = document.getElementById("f-note").value.trim();
   const category = document.getElementById("f-category").value;
   const payer = document.getElementById("f-payer").value;
   const paymentMode = document.getElementById("f-paymode").value;
-  const date = document.getElementById("f-date").value || todayISO();
+  const date = safeDate(document.getElementById("f-date").value);
   if(!amount || amount<=0){ toast("Enter an amount first"); return; }
   const settings = getSettings();
   const now = Date.now();
@@ -820,12 +828,12 @@ async function handleCameraFile(file){
 }
 function confirmScan(){
   const d = state.scanData || {};
-  const amount = parseFloat(document.getElementById("f-amount").value);
+  const amount = parseAmountInput(document.getElementById("f-amount").value);
   const note = document.getElementById("f-note").value.trim();
   const category = document.getElementById("f-category").value;
   const payer = document.getElementById("f-payer").value;
   const paymentMode = document.getElementById("f-paymode").value;
-  const date = document.getElementById("f-date").value || todayISO();
+  const date = safeDate(document.getElementById("f-date").value);
   if(!amount || amount<=0){ toast("Enter an amount first"); return; }
   const settings = getSettings();
   const now = Date.now();
@@ -935,12 +943,13 @@ function renderSync(){
     banner = `<div class="stale-banner">⚠️ <span>It's been over 24 hours since your last sync.</span></div>`;
   }
   return `
-  <div class="topbar"><div><div class="brand">Sync</div><div class="subhead">Via your shared Proton Drive folder</div></div></div>
+  <div class="topbar"><div><div class="brand">Sync</div><div class="subhead">Via your shared drive — Google Drive, OneDrive, Proton Drive, iCloud, all work</div></div></div>
   ${banner}
   <div class="sync-card">
     <div class="sync-icon">🔄</div>
     <div style="font-weight:700; font-size:15px;">Sync now</div>
-    <div class="sync-status">Exports your entries, then lets you pick ${escapeHtml(settings.otherName||"their")}'s latest file from the shared Proton Drive folder</div>
+    <div class="sync-status">Exports your entries, then lets you pick ${escapeHtml(settings.otherName||"their")}'s latest file from your shared drive folder</div>
+    <div class="sync-status" style="margin-top:8px; font-style:italic;">Tip: use a folder named the same thing (e.g. "Spend Tracker") in whichever app you use — Google Drive, OneDrive, Proton Drive, or iCloud — so it's always easy to find.</div>
     <button class="btn-primary" style="margin-top:16px;" onclick="Ledger.syncNow()">Sync now</button>
   </div>
   <div class="sync-card">
@@ -976,7 +985,7 @@ async function exportData(){
 }
 async function syncNow(){
   await exportData();
-  toast(`Now pick ${getSettings().otherName||"their"}'s file from Proton Drive`, 3000);
+  toast(`Now pick ${getSettings().otherName||"their"}'s file from your Spend Tracker folder`, 3000);
   setTimeout(()=>document.getElementById("importFileInput").click(), 600);
 }
 async function handleImportFiles(fileList){
