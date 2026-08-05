@@ -126,7 +126,7 @@
 <body>
 <div id="app"></div>
 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
-<input type="file" id="importFileInput" accept="application/json,.json" multiple style="display:none;">
+<input type="file" id="importFileInput" accept=".json,application/json,text/plain,text/json,*/*" multiple style="display:none;">
 <div class="toast" id="toast"></div>
 
 <script>
@@ -998,7 +998,7 @@ function importNow(){
 }
 async function handleImportFiles(fileList){
   if(!fileList || !fileList.length) return;
-  let addedCount=0, updatedCount=0;
+  let addedCount=0, updatedCount=0, successCount=0, failCount=0;
   let entries = getEntries();
   const map = {}; entries.forEach(e=>map[e.id]=e);
   let classifier = getClassifier();
@@ -1006,6 +1006,7 @@ async function handleImportFiles(fileList){
   for(const file of Array.from(fileList)){
     try{
       const text = await file.text();
+      if(!text || !text.trim()){ throw new Error("file was empty"); }
       const data = JSON.parse(text);
       if(Array.isArray(data.entries)){
         data.entries.forEach(incoming=>{
@@ -1016,18 +1017,25 @@ async function handleImportFiles(fileList){
       }
       if(data.classifier) classifier = mergeClassifiers(classifier, data.classifier);
       if(data.paymode) paymode = mergePaymode(paymode, data.paymode);
+      successCount++;
     } catch(err){
       console.error("Import failed for", file.name, err);
-      toast("Couldn't read "+file.name);
+      failCount++;
+      toast(`Couldn't read ${file.name} — ${err.message||err}`, 4000);
     }
   }
-  saveEntries(Object.values(map));
-  saveClassifier(classifier);
-  savePaymode(paymode);
-  const settings = getSettings();
-  settings.lastSyncAt = Date.now();
-  saveSettings(settings);
-  toast(`Synced — ${addedCount} new, ${updatedCount} updated`);
+  if(successCount>0){
+    saveEntries(Object.values(map));
+    saveClassifier(classifier);
+    savePaymode(paymode);
+    const settings = getSettings();
+    settings.lastSyncAt = Date.now();
+    saveSettings(settings);
+    if(failCount===0){ toast(`Synced — ${addedCount} new, ${updatedCount} updated`); }
+    else { toast(`Partially synced — ${failCount} file(s) unreadable`, 3500); }
+  } else {
+    toast(`Sync failed — couldn't read any of the selected file(s)`, 4000);
+  }
   render();
 }
 function checkSyncNudge(){
